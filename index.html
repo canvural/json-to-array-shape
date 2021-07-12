@@ -27,10 +27,11 @@
 
 <body class="container mx-auto bg-gray-100 p-4">
     <div class="space-y-2">
-        <div>
+        <div class="space-y-2">
             <label for="json">JSON</label>
-            <textarea name="json" id="json" rows="5" autofocus="" placeholder="{}" class="resize-y p-2 w-full font-mono mt-2"></textarea>
-            <button id="process" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
+            <textarea name="json" id="json" rows="5" autofocus="" placeholder="{}" class="resize-y p-2 w-full font-mono"></textarea>
+            <span class="text-sm text-red-500 block" id="error"></span>
+            <button id="process" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                 Process
             </button>
         </div>
@@ -51,8 +52,11 @@
 
         function parseJson(rawJson) {
           try {
-            return JSON.parse(rawJson)
+            const parsed = JSON.parse(rawJson)
+            document.getElementById('error').innerHTML = ''
+            return parsed
           } catch (e) {
+            document.getElementById('error').innerHTML = 'You entered not valid JSON.'
             return {}
           }
         }
