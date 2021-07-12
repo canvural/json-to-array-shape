@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>JSON to Array shape converter</title>
+
+    <script type="module">
+      document.documentElement.classList.remove('no-js');
+      document.documentElement.classList.add('js');
+    </script>
+
+    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+
+    <meta name="description" content="Page description">
+    <meta property="og:title" content="Unique page title - My Site">
+    <meta property="og:description" content="Page description">
+    <meta property="og:image" content="https://www.mywebsite.com/image.jpg">
+    <meta property="og:image:alt" content="Image description">
+    <meta property="og:locale" content="en_GB">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta property="og:url" content="https://www.mywebsite.com/page">
+    <link rel="canonical" href="https://www.mywebsite.com/page">
+</head>
+
+<body class="container mx-auto bg-gray-100 p-4">
+    <div class="">
+        <label for="json">JSON</label>
+        <textarea name="json" id="json" rows="5" autofocus="" placeholder="{}" class="resize-y p-2 w-full font-mono mt-2"></textarea>
+        <button id="process" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
+            Process
+        </button>
+    </div>
+    <script>
+        document.getElementById('process').addEventListener('click', function (e) {
+          let rawJson = document.getElementById('json').value
+          let json = parseJson(rawJson)
+          let typedJson = traverse(json)
+          //console.log(typedJson)
+
+          console.log(toShape(typedJson))
+        })
+
+        function parseJson(rawJson) {
+          try {
+            return JSON.parse(rawJson)
+          } catch (e) {
+            return {}
+          }
+        }
+
+        function traverse(o) {
+          return Object.entries(o).reduce((newObj, [key, val]) => {
+            if (Array.isArray(val)) {
+              newObj[key] = []
+
+              val.forEach((el) => {
+                newObj[key].push(traverse(el))
+              })
+            } else if (typeof val === 'object' && val !== null) {
+              newObj[key] = traverse(val)
+            } else {
+              newObj[key] = typeof val
+            }
+
+            return newObj
+          }, {})
+        }
+
+        function toShape(typedJson) {
+          let shape = 'array{'
+
+          for(const [key, value] of Object.entries(typedJson)) {
+            if (typeof key === 'string') {
+              if (Array.isArray(value)) {
+                value.forEach((el, i) => {
+                  shape += `${i.toString()}: ${toShape(el)}, `
+                })
+              } else if (typeof value === 'object' && value !== null) {
+                shape += `${key}: ${toShape(value)}, `
+              } else {
+                shape += `${key}: ${typeof value}, `
+              }
+            }
+          }
+
+          return shape + '}';
+        }
+
+        function diff(o1, o2) {
+          return Object.keys(o2).reduce((diff, key) => {
+            if (o1[key] === o2[key]) return diff
+            return {
+              ...diff,
+              [key]: o2[key]
+            }
+          }, {})
+        }
+    </script>
+</body>
+</html>
