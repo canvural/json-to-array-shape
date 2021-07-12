@@ -26,21 +26,27 @@
 </head>
 
 <body class="container mx-auto bg-gray-100 p-4">
-    <div class="">
-        <label for="json">JSON</label>
-        <textarea name="json" id="json" rows="5" autofocus="" placeholder="{}" class="resize-y p-2 w-full font-mono mt-2"></textarea>
-        <button id="process" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
-            Process
-        </button>
+    <div class="space-y-2">
+        <div>
+            <label for="json">JSON</label>
+            <textarea name="json" id="json" rows="5" autofocus="" placeholder="{}" class="resize-y p-2 w-full font-mono mt-2"></textarea>
+            <button id="process" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
+                Process
+            </button>
+        </div>
+
+        <div>
+            <label for="result" class="mt-4">Result</label>
+            <textarea name="result" id="result" rows="5" autofocus="" placeholder="" class="resize-y p-2 w-full font-mono mt-2"></textarea>
+        </div>
     </div>
     <script>
         document.getElementById('process').addEventListener('click', function (e) {
           let rawJson = document.getElementById('json').value
           let json = parseJson(rawJson)
           let typedJson = traverse(json)
-          //console.log(typedJson)
 
-          console.log(toShape(typedJson))
+          document.getElementById('result').value = toShape(typedJson).replaceAll(', }', '}')
         })
 
         function parseJson(rawJson) {
@@ -62,7 +68,15 @@
             } else if (typeof val === 'object' && val !== null) {
               newObj[key] = traverse(val)
             } else {
-              newObj[key] = typeof val
+              if (typeof val === 'number') {
+                if (Number.isInteger(val)) {
+                  newObj[key] = 'int'
+                } else {
+                  newObj[key] = 'float'
+                }
+              } else {
+                newObj[key] = typeof val
+              }
             }
 
             return newObj
@@ -81,7 +95,7 @@
               } else if (typeof value === 'object' && value !== null) {
                 shape += `${key}: ${toShape(value)}, `
               } else {
-                shape += `${key}: ${typeof value}, `
+                shape += `${key}: ${value}, `
               }
             }
           }
