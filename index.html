@@ -10,8 +10,9 @@
       document.documentElement.classList.remove('no-js');
       document.documentElement.classList.add('js');
     </script>
+    <link rel="stylesheet" type="text/css" href="./output.css" />
 
-    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" integrity="sha256-qXBd/EfAdjOA2FGrGAG+b3YBn2tn5A6bhz+LSgYD96k=" crossorigin="anonymous"></script>
 
     <meta name="description" content="Small web tool that lets you convert JSON into array shape format.">
     <meta property="og:title" content="JSON to Array shape converter - Can Vural">
@@ -20,109 +21,128 @@
     <meta property="og:type" content="website">
 </head>
 
-<body class="container mx-auto bg-gray-100 p-4">
-    <div class="space-y-2">
-        <div class="space-y-2">
-            <label for="json">JSON</label>
-            <textarea name="json" id="json" rows="5" autofocus="" placeholder="{}" class="resize-y p-2 w-full font-mono"></textarea>
-            <span class="text-sm text-red-500 block" id="error"></span>
-            <button id="process" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Process
-            </button>
-        </div>
-
-        <div>
-            <label for="result" class="mt-4">Result</label>
-            <div class="relative">
-                <textarea readonly name="result" id="result" rows="5" autofocus="" placeholder="" class="resize-none p-2 w-full font-mono mt-2"></textarea>
-                <div class="absolute bottom-2 right-2 cursor-pointer text-gray-400 hover:text-black" id="copy">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                </div>
+<body class="bg-zinc-50 h-screen flex items-center justify-center">
+    <main class="shadow-2xl rounded-md bg-stone-50 md:-mt-24 p-8 container mx-auto flex flex-col items-center ">
+        <div class="relative">
+            <label for="input-json" class="block text-sky-600 text-lg font-semibold">JSON data</label>
+            <textarea name="input-json" id="input-json" class="mt-2 p-2 focus:outline-none focus:ring focus:ring-sky-300 overflow-y-scroll h-[200px] min-h-[200px]" cols="30" rows="10" placeholder="{}"></textarea>
+            <div id="delete-button" class="absolute bottom-2 right-2 cursor-pointer text-slate-400 hover:text-slate-800">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
             </div>
         </div>
-    </div>
+        <span class="text-red-600" id="error"></span>
+        <div class="flex flex-row items-center">
+            <button class="block bg-sky-400 rounded-full mt-3 p-2 text-white" type="submit" id="convert">Convert</button>
+            <div class="mt-3">
+                <label for="generalize" class="ml-2">Generalize types</label>
+                <input type="checkbox" class="ml-2" name="generalize" id="generalize" />
+            </div>
+        </div>
+
+        <hr class="border-1 my-6 w-full border-dashed border-slate-300" />
+
+        <div class="mt-2">
+            <label for="result-shape" class="block text-sky-600 text-lg font-semibold">Array shape</label>
+            <textarea readonly name="result-shape" id="result-shape" class="mt-2 p-2 focus:outline-none focus:ring focus:ring-sky-300 overflow-y-scroll h-[200px] min-h-[200px]" cols="30" rows="10" placeholder="array{}"> </textarea>
+        </div>
+    </main>
     <script>
-        document.getElementById('process').addEventListener('click', function (e) {
-          let rawJson = document.getElementById('json').value
-          let json = parseJson(rawJson)
-          let typedJson = traverse(json)
 
-          document.getElementById('result').value = toShape(typedJson).replaceAll(', }', '}')
-        })
+      document.getElementById('convert').addEventListener('click', function (e) {
+        let rawJson = document.getElementById('input-json').value
+        let json = parseJson(rawJson)
 
-        document.getElementById("copy").addEventListener("click", () => {
-          document.getElementById('result').select()
-          document.execCommand("copy");
-        });
+        document.getElementById('result-shape').value = toShape(json)
+      })
 
-        function parseJson(rawJson) {
-          try {
-            const parsed = JSON.parse(rawJson)
-            document.getElementById('error').innerHTML = ''
-            return parsed
-          } catch (e) {
-            document.getElementById('error').innerHTML = 'You entered not valid JSON.'
-            return {}
-          }
+      document.getElementById("result-shape").addEventListener("click", () => {
+        document.getElementById('result-shape').select()
+        document.execCommand("copy");
+      });
+
+      function parseJson(rawJson) {
+        try {
+          const parsed = JSON.parse(rawJson)
+          document.getElementById('error').innerHTML = ''
+          return parsed
+        } catch (e) {
+          document.getElementById('error').innerHTML = 'You did not enter valid JSON.'
+          return {}
         }
+      }
 
-        function traverse(o) {
-          return Object.entries(o).reduce((newObj, [key, val]) => {
-            if (Array.isArray(val)) {
-              newObj[key] = []
+      function getType(obj) {
+        if (obj === null) return "null";
+        if (obj === undefined) return "null";
+        if (_.isArray(obj)) return "array";
+        if (_.isObject(obj)) return "object";
+        if (_.isString(obj)) return "string";
+        if (_.isInteger(obj)) return "int";
+        if (_.isBoolean(obj)) return "bool";
+        if (_.isNumber(obj)) return "float";
+        return "?";
+      }
 
-              val.forEach((el) => {
-                newObj[key].push(traverse(el))
-              })
-            } else if (typeof val === 'object' && val !== null) {
-              newObj[key] = traverse(val)
+      const toShape = (json) => {
+        let schema = "";
+        function traverse(obj) {
+          let type = getType(obj);
+
+          if (type === "array") {
+            if (obj.length < 1) {
+              return "array{}";
+            }
+
+            if (document.getElementById('generalize').checked) {
+              let uniqTypes = _.uniq(_.map(obj, traverse));
+
+              if (uniqTypes.length === 1) {
+                return `array<int, ${uniqTypes[0]}>`;
+              }
+
+              return `array<${_.join(uniqTypes, "|")}>`;
             } else {
-              if (typeof val === 'number') {
-                if (Number.isInteger(val)) {
-                  newObj[key] = 'int'
-                } else {
-                  newObj[key] = 'float'
+              return `array{${_.map(obj, (v, k) => {
+                if (_.isArray(v) || _.isObject(v)) {
+                  return `${_.isInteger(k) ? "" : k + ":"} ${traverse(v)}`;
                 }
-              } else {
-                newObj[key] = typeof val
-              }
-            }
 
-            return newObj
-          }, {})
-        }
+                if (_.isString(v)) {
+                  v = `"${v}"`;
+                }
 
-        function toShape(typedJson) {
-          let shape = 'array{'
-
-          for(const [key, value] of Object.entries(typedJson)) {
-            if (typeof key === 'string') {
-              if (Array.isArray(value)) {
-                value.forEach((el, i) => {
-                  shape += `${i.toString()}: ${toShape(el)}, `
-                })
-              } else if (typeof value === 'object' && value !== null) {
-                shape += `${key}: ${toShape(value)}, `
-              } else {
-                shape += `${key}: ${value}, `
-              }
+                return `${_.isInteger(k) ? "" : k + ":"} ${v}`;
+              }).join(", ")}}`;
             }
           }
 
-          return shape + '}';
+          if (type === "object") {
+            return (
+              "array{" +
+              Object.keys(obj)
+                .map((k, i) => {
+                  return `${k}: ${traverse(obj[k])}`;
+                })
+                .join(",") +
+              "}"
+            );
+          }
+
+          if (document.getElementById('generalize').checked) {
+            return type;
+          }
+
+          if (_.isString(obj)) {
+            return `"${obj}"`;
+          }
+
+          return obj;
         }
 
-        function diff(o1, o2) {
-          return Object.keys(o2).reduce((diff, key) => {
-            if (o1[key] === o2[key]) return diff
-            return {
-              ...diff,
-              [key]: o2[key]
-            }
-          }, {})
-        }
+        return traverse(json);
+      };
     </script>
 </body>
 </html>
