@@ -38,6 +38,10 @@
                 <label for="generalize" class="ml-2">Generalize types</label>
                 <input type="checkbox" class="ml-2" name="generalize" id="generalize" />
             </div>
+            <div class="mt-6">
+                <label for="generalizeValues" class="ml-2">Only generalize values</label>
+                <input type="checkbox" class="ml-2" name="generalizeValues" id="generalizeValues" />
+            </div>
         </div>
 
         <hr class="border-1 my-6 w-full border-dashed border-slate-300" />
@@ -57,6 +61,7 @@
 
       document.getElementById('input-json').addEventListener('input', _.debounce(convertJsonToArrayShape, 350))
       document.getElementById('generalize').addEventListener('change', _.debounce(convertJsonToArrayShape, 100))
+      document.getElementById('generalizeValues').addEventListener('change', _.debounce(convertJsonToArrayShape, 100))
       document.getElementById('delete-button').addEventListener('click', function () { document.getElementById('input-json').value = ''; document.getElementById('result-shape').value = '' })
 
       document.getElementById("result-shape").addEventListener("click", () => {
@@ -97,7 +102,7 @@
               return "array{}";
             }
 
-            if (document.getElementById('generalize').checked) {
+            function generalizeArray(obj) {
               let uniqTypes = _.uniq(_.map(obj, traverse));
 
               if (uniqTypes.length === 1) {
@@ -105,6 +110,10 @@
               }
 
               return `array<${_.join(uniqTypes, "|")}>`;
+            }
+
+            if (document.getElementById('generalize').checked) {
+              return generalizeArray(obj);
             } else {
               return `array{${_.map(obj, (v, k) => {
                 if (_.isArray(v) || _.isObject(v)) {
@@ -144,7 +153,7 @@
             );
           }
 
-          if (document.getElementById('generalize').checked) {
+          if (document.getElementById('generalize').checked || document.getElementById('generalizeValues').checked) {
             return type;
           }
 
