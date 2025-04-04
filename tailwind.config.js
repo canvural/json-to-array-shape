@@ -1,3 +1,10 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./index.html']
+  content: [
+    "./*.html", // Tells Tailwind to scan all HTML files in the current directory
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
 }

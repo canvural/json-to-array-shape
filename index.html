@@ -1,171 +1,368 @@
 <!DOCTYPE html>
-<html lang="en" class="no-js">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <title>JSON to Array shape converter</title>
-
-    <script type="module">
-      document.documentElement.classList.remove('no-js');
-      document.documentElement.classList.add('js');
-    </script>
-    <link rel="stylesheet" type="text/css" href="./output.css" />
-
-    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" integrity="sha256-qXBd/EfAdjOA2FGrGAG+b3YBn2tn5A6bhz+LSgYD96k=" crossorigin="anonymous"></script>
-
-    <meta name="description" content="Small web tool that lets you convert JSON into array shape format.">
-    <meta property="og:title" content="JSON to Array shape converter - Can Vural">
-    <meta property="og:description" content="Small web tool that lets you convert JSON into array shape format.">
-    <meta property="og:locale" content="en_GB">
-    <meta property="og:type" content="website">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON to PHPStan Array Shape Converter (List Union Simplification)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="./output.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl relative">
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">JSON to PHPStan Array Shape Converter</h1>
 
-<body class="bg-zinc-50 h-screen flex items-center justify-center">
-    <main class="shadow-2xl rounded-md bg-stone-50 md:-mt-24 p-8 container mx-auto flex flex-col items-center ">
-        <div class="relative">
-            <label for="input-json" class="block text-sky-600 text-lg font-semibold">JSON data</label>
-            <textarea name="input-json" id="input-json" class="mt-2 p-2 focus:outline-none focus:ring focus:ring-sky-300 overflow-y-scroll h-[200px] min-h-[200px]" cols="30" rows="10" placeholder="{}"></textarea>
-            <div id="delete-button" class="absolute bottom-2 right-2 cursor-pointer text-slate-400 hover:text-slate-800">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-            </div>
-        </div>
-        <span class="text-red-600" id="error"></span>
-        <div class="flex flex-row items-center">
-            <div class="mt-6">
-                <label for="generalize" class="ml-2">Generalize types</label>
-                <input type="checkbox" class="ml-2" name="generalize" id="generalize" />
-            </div>
-            <div class="mt-6">
-                <label for="generalizeValues" class="ml-2">Only generalize values</label>
-                <input type="checkbox" class="ml-2" name="generalizeValues" id="generalizeValues" />
-            </div>
+        <div id="errorMessages" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4" role="alert">
+            <strong class="font-bold">Error:</strong>
+            <span class="block sm:inline" id="errorMessageContent"></span>
         </div>
 
-        <hr class="border-1 my-6 w-full border-dashed border-slate-300" />
-
-        <div class="mt-2">
-            <label for="result-shape" class="block text-sky-600 text-lg font-semibold">Array shape</label>
-            <textarea readonly name="result-shape" id="result-shape" class="mt-2 p-2 focus:outline-none focus:ring focus:ring-sky-300 overflow-y-scroll h-[200px] min-h-[200px]" cols="30" rows="10" placeholder="array{}"> </textarea>
+        <div class="mb-4">
+            <label for="jsonInput" class="block text-sm font-medium text-gray-700 mb-2">Enter JSON String (updates automatically):</label>
+            <textarea id="jsonInput" rows="10" class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 resize-y" placeholder='{
+    "name": "Example User",
+    "age": 30,
+    "is_active": true,
+    "items": [
+        {"id": 1, "value": "apple"},
+        {"id": 2, "value": "banana"}
+    ],
+    "address": null,
+    "metadata": {
+        "created_at": "2023-01-01T12:00:00Z",
+        "optional_field": null
+    }
+}'></textarea>
+            <div class="text-right text-sm text-gray-500 mt-1 pr-1">
+                <span id="charCount">0</span> characters
+            </div>
         </div>
-    </main>
+
+        <div class="mb-6 flex items-center">
+            <input id="generalizeCheckbox" type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+            <label for="generalizeCheckbox" class="ml-2 block text-sm text-gray-900">
+                Generalize object types (use <code>array&lt;string, TValue&gt;</code>)
+            </label>
+        </div>
+
+        <div class="mt-6">
+            <label for="phpstanOutput" class="block text-sm font-medium text-gray-700 mb-2">PHPStan Array Shape:</label>
+            <div id="outputContainer" class="relative">
+                <pre id="phpstanOutput" class="w-full p-3 border border-gray-300 rounded-md bg-gray-50 min-h-[100px]"></pre>
+                <button id="copyButton" title="Copy to Clipboard" class="absolute top-2 right-2 p-1.5 bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 z-20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                </button>
+                <span id="copyFeedback" class="absolute top-10 right-2 text-xs text-green-600 font-medium opacity-0 copy-feedback z-20">Copied!</span>
+                 <div id="loadingIndicator" class="loading-overlay hidden flex items-center justify-center">
+                    Processing...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-      const convertJsonToArrayShape = function (e) {
-        let rawJson = document.getElementById('input-json').value
-        let json = parseJson(rawJson)
+        // --- DOM Elements ---
+        const jsonInput = document.getElementById('jsonInput');
+        const phpstanOutput = document.getElementById('phpstanOutput');
+        const errorMessagesDiv = document.getElementById('errorMessages');
+        const errorMessageContent = document.getElementById('errorMessageContent');
+        const copyButton = document.getElementById('copyButton');
+        const copyFeedback = document.getElementById('copyFeedback');
+        const generalizeCheckbox = document.getElementById('generalizeCheckbox');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const outputContainer = document.getElementById('outputContainer');
+        const charCountElement = document.getElementById('charCount');
 
-        document.getElementById('result-shape').value = toShape(json)
-      }
+        // --- State & Constants ---
+        let debounceTimeout;
+        const DEBOUNCE_DELAY = 750;
+        const LOADING_INDICATOR_DELAY = 250; // ms
+        let loadingIndicatorTimeout = null;
 
-      document.getElementById('input-json').addEventListener('input', _.debounce(convertJsonToArrayShape, 350))
-      document.getElementById('generalize').addEventListener('change', _.debounce(convertJsonToArrayShape, 100))
-      document.getElementById('generalizeValues').addEventListener('change', _.debounce(convertJsonToArrayShape, 100))
-      document.getElementById('delete-button').addEventListener('click', function () { document.getElementById('input-json').value = ''; document.getElementById('result-shape').value = '' })
+        // --- Web Worker Setup ---
+        let worker = null;
+        let workerUrl = null;
 
-      document.getElementById("result-shape").addEventListener("click", () => {
-        document.getElementById('result-shape').select()
-        document.execCommand("copy");
-      });
+        // Define the worker code as a string
+        const workerScriptContent = `
+            const MAX_DEPTH = 3; // Maximum recursion depth for type generation
+            // Regex to capture the inner type T from list<T>
+            // It's simple and might fail on very complex nested generics like list<array<string, list<int>>>
+            // but handles basic cases and balanced brackets reasonably well.
+            const LIST_TYPE_REGEX = /^list<(.+)>$/;
 
-      function parseJson(rawJson) {
+            /** Checks if a string is a valid PHP identifier */
+            function isValidPhpIdentifier(key) { return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key); }
+
+            /**
+             * Simplifies a union type array based on rules:
+             * - 'mixed' subsumes everything.
+             * - 'float' subsumes 'int'.
+             * - Simplifies unions of list<T> types.
+             * @param {string[]} types - Array of unique type strings.
+             * @returns {string} - Simplified union type string.
+             */
+            function simplifyUnion(types) {
+                const uniqueTypes = new Set(types);
+
+                if (uniqueTypes.size <= 1) {
+                    return types.join('|'); // No simplification needed
+                }
+
+                // Rule 1: 'mixed' subsumes everything
+                if (uniqueTypes.has('mixed')) {
+                    return 'mixed';
+                }
+
+                // --- Separate type categories ---
+                const listTypes = [];
+                const otherTypes = new Set(); // Use Set for remaining non-list types
+
+                uniqueTypes.forEach(type => {
+                    const listMatch = type.match(LIST_TYPE_REGEX);
+                    if (listMatch) {
+                        // Store the full list type string and its inner type
+                        listTypes.push({ full: type, inner: listMatch[1] });
+                    } else {
+                        otherTypes.add(type);
+                    }
+                });
+
+                // --- Simplify List Types ---
+                let simplifiedListType = null;
+                if (listTypes.length > 0) {
+                    const innerTypes = listTypes.map(lt => lt.inner);
+                    if (innerTypes.includes('mixed')) {
+                        // If any list has <mixed>, the result is list<mixed>
+                        simplifiedListType = 'list<mixed>';
+                    } else {
+                        // Combine and simplify inner types recursively
+                        // Need to handle splitting inner unions 'T1|T2' correctly
+                        const allInnerTypes = innerTypes.flatMap(inner => inner.split('|'));
+                        const simplifiedInnerUnion = simplifyUnion(Array.from(new Set(allInnerTypes)));
+                        if (simplifiedInnerUnion) {
+                             simplifiedListType = \`list<\${simplifiedInnerUnion}>\`;
+                        } else {
+                             simplifiedListType = 'list<mixed>'; // Should not happen if innerTypes not empty
+                        }
+                    }
+                }
+
+                // --- Simplify Other Types ---
+                // Rule 2: Numeric simplification ('float' subsumes 'int')
+                if (otherTypes.has('int') && otherTypes.has('float')) {
+                    otherTypes.delete('int');
+                }
+                 // Add more rules for other types if needed
+
+                // --- Combine Results ---
+                const finalTypeSet = new Set(otherTypes);
+                if (simplifiedListType) {
+                    finalTypeSet.add(simplifiedListType);
+                }
+
+                 // --- Final Check for 'mixed' ---
+                 // It's possible a simplified list like list<string|mixed> became list<mixed>
+                 // or other simplifications yield 'mixed'. Check again.
+                 if (finalTypeSet.has('mixed')) {
+                     return 'mixed';
+                 }
+
+
+                // Sort for consistent output order before joining
+                const finalTypes = Array.from(finalTypeSet).sort();
+
+                return finalTypes.join('|') || 'mixed'; // Default to mixed if somehow empty
+            }
+
+
+            /**
+             * Recursively converts JS value to PHPStan type string with depth limiting and union simplification.
+             */
+            function getPhpStanType(value, generalize, depth = 0) {
+                // --- Primitive Types ---
+                if (value === null) { return 'null'; }
+                const type = typeof value;
+                if (type === 'string') { return 'string'; }
+                if (type === 'number') { return Number.isInteger(value) ? 'int' : 'float'; }
+                if (type === 'boolean') { return 'bool'; }
+
+                // --- Depth Limit Check ---
+                if (depth >= MAX_DEPTH) { return 'mixed'; }
+
+                // --- Array Processing ---
+                if (Array.isArray(value)) {
+                    if (value.length === 0) { return 'list<mixed>'; }
+                    const elementTypes = value.map(val => getPhpStanType(val, generalize, depth + 1));
+                    // Simplify the union of element types using the enhanced function
+                    const simplifiedUnionType = simplifyUnion(Array.from(new Set(elementTypes)));
+                    // If simplifyUnion returns empty (unlikely), default to mixed
+                    return \`list<\${simplifiedUnionType || 'mixed'}>\`;
+                }
+
+                // --- Object Processing ---
+                if (type === 'object' && value !== null) {
+                    const keys = Object.keys(value);
+                    if (keys.length === 0) { return generalize ? 'array<string, mixed>' : 'array{}'; }
+
+                    if (generalize) {
+                        // Generalize: array<string, TValue>
+                        const valueTypes = Object.values(value).map(val => getPhpStanType(val, generalize, depth + 1));
+                         // Simplify the union of value types using the enhanced function
+                        const simplifiedUnionType = simplifyUnion(Array.from(new Set(valueTypes)));
+                        // If simplifyUnion returns empty (unlikely), default to mixed
+                        return \`array<string, \${simplifiedUnionType || 'mixed'}>\`;
+                    } else {
+                        // Specific shape: array{key: type, ...}
+                        const properties = keys.map(key => {
+                            const propertyType = getPhpStanType(value[key], generalize, depth + 1);
+                            const keyString = isValidPhpIdentifier(key) ? key : \`'\${key.replace(/'/g, "\\\\'")}'\`;
+                            return \`\${keyString}: \${propertyType}\`;
+                        }).join(', ');
+                        return \`array{\${properties}}\`;
+                    }
+                }
+
+                // --- Fallback ---
+                return 'mixed';
+            }
+
+            // Worker message handler
+            self.onmessage = function(event) {
+                // (Handler remains the same)
+                const { jsonString, generalize } = event.data;
+                try {
+                    const jsonData = JSON.parse(jsonString);
+                    const phpstanShape = getPhpStanType(jsonData, generalize, 0);
+                    self.postMessage({ success: true, result: phpstanShape });
+                } catch (error) {
+                    self.postMessage({ success: false, error: error.message });
+                }
+            };
+        `;
+
         try {
-          const parsed = JSON.parse(rawJson)
-          document.getElementById('error').innerHTML = ''
-          return parsed
+            // (Worker initialization remains the same)
+            const blob = new Blob([workerScriptContent], { type: 'application/javascript' });
+            workerUrl = URL.createObjectURL(blob);
+            worker = new Worker(workerUrl);
+
+            worker.onmessage = function(event) {
+                hideLoading();
+                const { success, result, error } = event.data;
+                if (success) {
+                    phpstanOutput.textContent = result;
+                    hideError();
+                } else {
+                    showError(error || 'An unknown error occurred in the worker.');
+                    phpstanOutput.textContent = '';
+                }
+            };
+            worker.onerror = function(error) {
+                hideLoading();
+                console.error("Worker error:", error);
+                showError(`Worker error: ${error.message}`);
+                phpstanOutput.textContent = '';
+            };
         } catch (e) {
-          document.getElementById('error').innerHTML = 'You did not enter valid JSON.'
-          return {}
-        }
-      }
-
-      function getType(obj) {
-        if (obj === null) return "null";
-        if (obj === undefined) return "null";
-        if (_.isArray(obj)) return "array";
-        if (_.isObject(obj)) return "object";
-        if (_.isString(obj)) return "string";
-        if (_.isInteger(obj)) return "int";
-        if (_.isBoolean(obj)) return "bool";
-        if (_.isNumber(obj)) return "float";
-        return "?";
-      }
-
-      const toShape = (json) => {
-        let schema = "";
-        function traverse(obj) {
-          let type = getType(obj);
-
-          if (type === "array") {
-            if (obj.length < 1) {
-              return "array{}";
-            }
-
-            function generalizeArray(obj) {
-              let uniqTypes = _.uniq(_.map(obj, traverse));
-
-              if (uniqTypes.length === 1) {
-                return `array<int, ${uniqTypes[0]}>`;
-              }
-
-              return `array<${_.join(uniqTypes, "|")}>`;
-            }
-
-            if (document.getElementById('generalize').checked) {
-              return generalizeArray(obj);
-            } else {
-              return `array{${_.map(obj, (v, k) => {
-                if (_.isArray(v) || _.isObject(v)) {
-                  return `${_.isInteger(k) ? "" : k + ":"} ${traverse(v)}`;
-                }
-
-                if (_.isString(v)) {
-                  v = `"${v}"`;
-                }
-
-                return `${_.isInteger(k) ? "" : k + ":"} ${v}`;
-              }).join(", ")}}`;
-            }
-          }
-
-          if (type === "object") {
-            if (document.getElementById('generalize').checked) {
-              return (
-                "array<string, " +
-                _.uniq(Object.keys(obj)
-                  .map((k, i) => {
-                    return `${traverse(obj[k])}`;
-                  }))
-                .join("|") +
-                ">"
-              );
-            }
-
-            return (
-              "array{" +
-              Object.keys(obj)
-                .map((k, i) => {
-                  return `${k}: ${traverse(obj[k])}`;
-                })
-                .join(",") +
-              "}"
-            );
-          }
-
-          if (document.getElementById('generalize').checked || document.getElementById('generalizeValues').checked) {
-            return type;
-          }
-
-          if (_.isString(obj)) {
-            return `"${obj}"`;
-          }
-
-          return obj;
+            console.error("Failed to initialize Web Worker:", e);
+            showError("Failed to initialize background processing. Large inputs may freeze the page.");
         }
 
-        return traverse(json);
-      };
+        window.addEventListener('unload', () => {
+            // (Cleanup remains the same)
+            if (workerUrl) URL.revokeObjectURL(workerUrl);
+            if (worker) worker.terminate();
+            if (loadingIndicatorTimeout) clearTimeout(loadingIndicatorTimeout);
+        });
+
+        // --- UI Functions ---
+        // (showLoading, hideLoading, hideError, showError, updateCharCount remain the same)
+        function showLoading() {
+            generalizeCheckbox.disabled = true;
+            if (loadingIndicatorTimeout) clearTimeout(loadingIndicatorTimeout);
+            loadingIndicatorTimeout = setTimeout(() => {
+                loadingIndicator.classList.remove('hidden');
+            }, LOADING_INDICATOR_DELAY);
+        }
+        function hideLoading() {
+            if (loadingIndicatorTimeout) clearTimeout(loadingIndicatorTimeout);
+            loadingIndicatorTimeout = null;
+            loadingIndicator.classList.add('hidden');
+            generalizeCheckbox.disabled = false;
+        }
+        function hideError() {
+            errorMessagesDiv.classList.add('hidden');
+            errorMessageContent.textContent = '';
+        }
+        function showError(message) {
+            errorMessageContent.textContent = message;
+            errorMessagesDiv.classList.remove('hidden');
+        }
+        function updateCharCount() {
+            const count = jsonInput.value.length;
+            charCountElement.textContent = count;
+        }
+
+        // --- Core Action ---
+        function triggerConversion() {
+            // (triggerConversion remains the same)
+             if (!worker) {
+                 showError("Processing worker not available.");
+                 return;
+            }
+            if (generalizeCheckbox.disabled) return; // Already processing
+
+            hideError();
+            const jsonString = jsonInput.value.trim();
+            if (!jsonString) {
+                phpstanOutput.textContent = '';
+                return;
+            }
+            showLoading();
+            phpstanOutput.textContent = '';
+            worker.postMessage({
+                jsonString: jsonString,
+                generalize: generalizeCheckbox.checked
+            });
+        }
+
+        // --- Copy Action ---
+        async function handleCopy() {
+            // (handleCopy remains the same)
+            const textToCopy = phpstanOutput.textContent;
+            if (!textToCopy || generalizeCheckbox.disabled) return;
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                copyFeedback.style.opacity = '1';
+                setTimeout(() => { copyFeedback.style.opacity = '0'; }, 1500);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                showError('Failed to copy text to clipboard.');
+            }
+        }
+
+        // --- Event Listeners ---
+        // (Event listeners remain the same)
+        jsonInput.addEventListener('input', () => {
+            updateCharCount();
+            if (!generalizeCheckbox.disabled) {
+                 clearTimeout(debounceTimeout);
+                 debounceTimeout = setTimeout(triggerConversion, DEBOUNCE_DELAY);
+            }
+        });
+        generalizeCheckbox.addEventListener('change', () => {
+            if (!generalizeCheckbox.disabled) {
+                triggerConversion();
+            }
+        });
+        copyButton.addEventListener('click', handleCopy);
+
+        // --- Initial state ---
+        updateCharCount();
+
     </script>
 </body>
 </html>
+
